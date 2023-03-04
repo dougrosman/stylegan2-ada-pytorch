@@ -1,32 +1,38 @@
-# StyleGAN2-ADA-PyTorch
+## Add to Colab
 
-**[Open this notebook in Google Colab](https://colab.research.google.com/github/dougrosman/stylegan2-ada-pytorch/blob/main/SG2_ADA_PyTorch_Training.ipynb)**<br>
-**[Tutorial: using this repo in Google Colab](https://dougrosman.github.io/cvml-sp21/resources/stylegan2-ada-pytorch-colab)**
+### StyleGAN2-ADA PyTorch (Start Here)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dvschultz/stylegan2-ada-pytorch/blob/main/SG2_ADA_PyTorch.ipynb)
 
-## Please Read
-This StyleGAN2-ADA-PyTorch repository was forked from [Derrick Schultz](https://github.com/dvschultz/stylegan2-ada-pytorch), which was forked from [Nvidia's original repo](https://github.com/NVlabs/stylegan2-ada-pytorch). A huge thank you to Derrick for developing these tools to make GANs accessible for artists and newcomers, and for generously sharing his knowledge and resources **for free**. Without artists/educators like this, we would be spending much more time (and money) getting these things working. If you find that you're using this Colab notebook extensively, and especially if you're using it to make work to display outside the classroom, **_please be sure to credit [Derrick Schultz](https://www.instagram.com/dvsmethid/?hl=en)_**, and I encourage you all to consider signing up for his [Patreon](https://www.patreon.com/bustbright) or [YouTube channel](https://www.youtube.com/channel/UCaZuPdmZ380SFUMKHVsv_AA/join). You can also send him a one-time payment on [Venmo](https://venmo.com/Derrick-Schultz). Derrick also has a Slack channel dedicated to this stuff, which you can access as a Patreon subscriber.
+### StyleGAN2-ADA-PyTorch to Rosinality Convertor
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dvschultz/stylegan2-ada-pytorch/blob/main/SG2_ADA_PT_to_Rosinality.ipynb)
 
-~ Doug
-<hr>
+### StyleGAN2-ADA PyTorch Reactive Audio
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dvschultz/stylegan2-ada-pytorch/blob/main/SG2-ADA-PT_AudioReactive%2BPitch.ipynb)
+
+### Blending Network Demo/Explainer
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dvschultz/stylegan2-ada-pytorch/blob/main/Network_Blending_ADA_PT.ipynb)
 
 ## Need Help?
-* If you’re new to StyleGAN2-ADA and looking to get started, please check out [this video series](https://www.youtube.com/playlist?list=PLWuCzxqIpJs8ViuBIUtAk-dsAtdrApYoy) from a course Lia Coleman and Derrick Schultz taught in October 2020.
+* If you’re new to StyleGAN2-ADA and looking to get started, please check out [this video series](https://www.youtube.com/playlist?list=PLWuCzxqIpJs8ViuBIUtAk-dsAtdrApYoy) from a course Lia Coleman and I taught in October 2020.
+* Interested in contributing? Please submit PRs or discuss changes in the [Artificial Images Slack](https://join.slack.com/t/ml-images/shared_invite/zt-9mxoe7va-eBZ9xzAWpx8VRL~Km_PzUQ) channel
 
-## Edits made to Nvidia's original repo (by me)
-* **Robust image conversion**: Certain image types/modes would cause dataset_tool.py to fail when converting images for training. dataset_tool.py now handles more image types
-
-## Edits made to Nvidia's original repo (by Derrick Schultz)
+## Edits made to this repo
 
 * **Fakes .jpg**: save yourself a ton of space with fakes during training saved as .jpg instead of .png
 * **Multiple interpolation options**: use `--process="interpolation"`, see `--help` for more options
 * **Easing options for interpolations**: see `--help` for more (this would be a great place for new coders to build additional feautures/options)
-* ~~**Vertical Mirroring**: use `--mirrory=True` to flip training set top to bottom~~ currently broken
+* **Vertical Mirroring**: use `--mirrory=True` to flip training set top to bottom (fixed, thanks [Diego](https://github.com/PDillis/stylegan2-ada-pytorch))
 * **Set Initial Augmentation Strength**: use `--initstrength={float value}` to set the initialized strength of augmentations (really helpful when restarting training)
 * **Set Initial Kimg count**: use `--nkimg={int value}` to set the initial kimg count (helpful with restarts)
 * **Closed Form Factorization:** converted from Rosinality repo by [Philip Bizimis](https://github.com/pbizimis); additional video creation features
 * **Additional Projector Techniques** Thanks to Peter Baylies for his projector code that optionally uses pixel-based loss or CLIP
 * **Interpolate from Projector .npz Files** Use the `combine_npz.py` script to combine multiple .npz files
 * **Convert to Rosinality model structure** Thanks to [Justin Pinkney](https://github.com/justinpinkney) for making this! Converting to Rosinality opens up numerous additional tools for manipulatinng StyleGAN models
+* **Custom data in Tensorflow models will no longer error out when converting to Official PyTorch format** Allows for conversion from many of the custom models on the [Awesome Pretrained SG2 repo](https://github.com/justinpinkney/awesome-pretrained-stylegan2) (This has the potential for problems but I’ve yet to find one.)
+* **Output size modification** Thank you to [Vadim Epstein](https://github.com/eps696/stylegan2ada) for allowing me to port his code for modifying output size for image and video generation. See `--size` and `--scale-type` in the generation script for more details.
+* **Flesh digressions script** based on Aydao script (ported by [grddavies](https://github.com/grddavies), thanks!)
+* **Blend Two Models at specific resolution layer** Based on [Justin Pinkney’s Tensorflow version](https://github.com/justinpinkney/stylegan2/blob/master/blend_models.py)
+* **Experimental Top-K training function** Improve generator training by only propagating gradients from images the discriminator was most unsure of: [Sinha & Zhao](https://arxiv.org/abs/2002.06224). Use `--topk={float value}` to define the decay rate. Ported from code written by [Hans Brouwer](https://github.com/JCBrouwer) from [SG2-ADA Tensorflow version](https://github.com/dvschultz/stylegan2-ada/issues?q=is%3Apr+author%3AJCBrouwer).
 
 ## StyleGAN2-ADA &mdash; Official PyTorch implementation
 
@@ -93,7 +99,9 @@ This repository is a faithful reimplementation of [StyleGAN2-ADA](https://github
 
 * Linux and Windows are supported, but we recommend Linux for performance and compatibility reasons.
 * 1&ndash;8 high-end NVIDIA GPUs with at least 12 GB of memory. We have done all testing and development using NVIDIA DGX-1 with 8 Tesla V100 GPUs.
-* 64-bit Python 3.7, PyTorch 1.7.1, and CUDA toolkit 11.0 or newer. Use CUDA toolkit 11.1 or later with RTX 3090.
+* 64-bit Python 3.7 and PyTorch 1.7.1. See [https://pytorch.org/](https://pytorch.org/) for PyTorch install instructions.
+* CUDA toolkit 11.0 or later.  Use at least version 11.1 if running on RTX 3090.  (Why is a separate CUDA toolkit installation required?  See comments in [#2](https://github.com/NVlabs/stylegan2-ada-pytorch/issues/2#issuecomment-779457121).)
+* Python libraries: `pip install click requests tqdm pyspng ninja imageio-ffmpeg==0.4.3`.  We use the Anaconda3 2020.11 distribution which installs most of these by default.
 * Docker users: use the [provided Dockerfile](./Dockerfile) to build an image with the required library dependencies.
 
 The code relies heavily on custom PyTorch extensions that are compiled on the fly using NVCC. On Windows, the compilation requires Microsoft Visual Studio. We recommend installing [Visual Studio Community Edition](https://visualstudio.microsoft.com/vs/) and adding it into `PATH` using `"C:\Program Files (x86)\Microsoft Visual Studio\<VERSION>\Community\VC\Auxiliary\Build\vcvars64.bat"`.

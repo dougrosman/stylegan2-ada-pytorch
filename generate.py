@@ -39,22 +39,30 @@ class OSN():
     def get_val(self, angle):
         self.xoff = valmap(np.cos(angle), -1, 1, self.x, self.x + self.d)
         self.yoff = valmap(np.sin(angle), -1, 1, self.y, self.y + self.d)
-        return self.tmp.noise2d(self.xoff,self.yoff)
+        return self.tmp.noise2(self.xoff,self.yoff)
 
-def circularloop(nf, d, seed):
-    if seed:
-        np.random.RandomState(seed)
-
+def circularloop(nf, d, seed, seeds):
     r = d/2
 
     zs = []
-
-    rnd = np.random
     # hardcoding in 512, prob TODO fix needed
     # latents_c = rnd.randn(1, G.input_shape[1])
-    latents_a = rnd.randn(1, 512)
-    latents_b = rnd.randn(1, 512)
-    latents_c = rnd.randn(1, 512)
+
+    if(seeds is None):
+        if seed:
+            rnd = np.random.RandomState(seed)
+        else:
+            rnd = np.random
+        latents_a = rnd.randn(1, 512)
+        latents_b = rnd.randn(1, 512)
+        latents_c = rnd.randn(1, 512)
+    elif(len(seeds) is not 3):
+        assert('Must choose exactly 3 seeds!')
+    else:
+        latents_a = np.random.RandomState(int(seeds[0])).randn(1, 512)
+        latents_b = np.random.RandomState(int(seeds[1])).randn(1, 512)
+        latents_c = np.random.RandomState(int(seeds[2])).randn(1, 512)
+
     latents = (latents_a, latents_b, latents_c)
 
     current_pos = 0.0
@@ -87,6 +95,10 @@ def num_range(s: str) -> List[int]:
     vals = s.split(',')
     return [int(x) for x in vals]
 
+def size_range(s: str) -> List[int]:
+    '''Accept a range 'a-c' and return as a list of 2 ints.'''
+    return [int(v) for v in s.split('-')][::-1]
+
 def line_interpolate(zs, steps, easing):
     out = []
     for i in range(len(zs)-1):
@@ -106,10 +118,20 @@ def line_interpolate(zs, steps, easing):
                     fr = 121 * t * t / 16
                 elif (t < 8/11):
                     fr = (363 / 40.0 * t * t) - (99 / 10.0 * t) + 17 / 5.0
-                elif t < 9/ 0:
+                elif t < 9/10:
                     fr = (4356 / 361.0 * t * t) - (35442 / 1805.0 * t) + 16061 / 1805.0
                 else:
                     fr = (54 / 5.0 * t * t) - (513 / 25.0 * t) + 268 / 25.0
+                out.append(zs[i+1]*fr + zs[i]*(1-fr))
+            elif (easing == 'circularEaseOut'):
+                fr = np.sqrt((2 - t) * t)
+                out.append(zs[i+1]*fr + zs[i]*(1-fr))
+            elif (easing == 'circularEaseOut2'):
+                fr = np.sqrt(np.sqrt((2 - t) * t))
+                out.append(zs[i+1]*fr + zs[i]*(1-fr))
+            elif(easing == 'backEaseOut'):
+                p = 1 - t
+                fr = 1 - (p * p * p - p * math.sin(p * math.pi))
                 out.append(zs[i+1]*fr + zs[i]*(1-fr))
     return out
 
@@ -131,21 +153,29 @@ def noiseloop(nf, d, seed):
 
     return zs
 
-def images(G,device,inputs,space,truncation_psi,label,noise_mode,outdir):
+def images(G,device,inputs,space,truncation_psi,label,noise_mode,outdir,start=None,stop=None):
+    if(start is not None and stop is not None):
+        tp = start
+        tp_i = (stop-start)/len(inputs)
+
     for idx, i in enumerate(inputs):
         print('Generating image for frame %d/%d ...' % (idx, len(inputs)))
         
         if (space=='z'):
             z = torch.from_numpy(i).to(device)
-            img = G(z, label, truncation_psi=truncation_psi, noise_mode=noise_mode)
+            if(start is not None and stop is not None):
+                img = G(z, label, truncation_psi=tp, noise_mode=noise_mode)
+                tp = tp+tp_i
+            else:
+                img = G(z, label, truncation_psi=truncation_psi, noise_mode=noise_mode)
         else:
-            if i.shape[0] == 18: 
+            if len(i.shape) == 2: 
               i = torch.from_numpy(i).unsqueeze(0).to(device)
             img = G.synthesis(i, noise_mode=noise_mode, force_fp32=True)
         img = (img.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
         PIL.Image.fromarray(img[0].cpu().numpy(), 'RGB').save(f'{outdir}/frame{idx:04d}.png')
 
-def interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,label,frames,noise_mode,outdir,interpolation,easing,diameter):
+def interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,label,frames,noise_mode,outdir,interpolation,easing,diameter,start=None,stop=None):
     if(interpolation=='noiseloop' or interpolation=='circularloop'):
         if seeds is not None:
             print(f'Warning: interpolation type: "{interpolation}" doesn’t support set seeds.')
@@ -153,7 +183,7 @@ def interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,labe
         if(interpolation=='noiseloop'):
             points = noiseloop(frames, diameter, random_seed)
         elif(interpolation=='circularloop'):
-            points = circularloop(frames, diameter, random_seed)
+            points = circularloop(frames, diameter, random_seed, seeds)
 
     else:
         if projected_w is not None:
@@ -169,12 +199,10 @@ def interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,labe
         if(interpolation=='linear'):
             points = line_interpolate(points,frames,easing)
         elif(interpolation=='slerp'):
-            if(space=='w'):
-                print(f'Slerp currently isn’t supported in w space. Working on it!')
-            else:
-                points = slerp_interpolate(points,frames)
+            points = slerp_interpolate(points,frames)
+            
     # generate frames
-    images(G,device,points,space,truncation_psi,label,noise_mode,outdir)
+    images(G,device,points,space,truncation_psi,label,noise_mode,outdir,start,stop)
 
 def seeds_to_zs(G,seeds):
     zs = []
@@ -183,32 +211,44 @@ def seeds_to_zs(G,seeds):
         zs.append(z)
     return zs
 
-# very hacky implementation of:
-# https://github.com/soumith/dcgan.torch/issues/14
-def slerp(val, low, high):
-    assert low.shape == high.shape
-
-    # z space
-    if len(low.shape) == 2:
-        out = np.zeros([low.shape[0],low.shape[1]])
-        for i in range(low.shape[0]):
-            omega = np.arccos(np.clip(np.dot(low[i]/np.linalg.norm(low[i]), high[i]/np.linalg.norm(high[i])), -1, 1))
-            so = np.sin(omega)
-            if so == 0:
-                out[i] = (1.0-val) * low[i] + val * high[i] # L'Hopital's rule/LERP
-            out[i] = np.sin((1.0-val)*omega) / so * low[i] + np.sin(val*omega) / so * high[i]
-    # w space
-    else:
-        out = np.zeros([low.shape[0],low.shape[1],low.shape[2]])
-
-        for i in range(low.shape[1]):
-            omega = np.arccos(np.clip(np.dot(low[0][i]/np.linalg.norm(low[0][i]), high[0][i]/np.linalg.norm(high[0][i])), -1, 1))
-            so = np.sin(omega)
-            if so == 0:
-                out[i] = (1.0-val) * low[0][i] + val * high[0][i] # L'Hopital's rule/LERP
-            out[0][i] = np.sin((1.0-val)*omega) / so * low[0][i] + np.sin(val*omega) / so * high[0][i]
-
-    return out
+# slightly modified version of
+# https://github.com/PDillis/stylegan2-fun/blob/master/run_generator.py#L399
+def slerp(t, v0, v1, DOT_THRESHOLD=0.9995):
+    '''
+    Spherical linear interpolation
+    Args:
+        t (float/np.ndarray): Float value between 0.0 and 1.0
+        v0 (np.ndarray): Starting vector
+        v1 (np.ndarray): Final vector
+        DOT_THRESHOLD (float): Threshold for considering the two vectors as
+                               colineal. Not recommended to alter this.
+    Returns:
+        v2 (np.ndarray): Interpolation vector between v0 and v1
+    '''
+    v0 = v0.cpu().detach().numpy()
+    v1 = v1.cpu().detach().numpy()
+    # Copy the vectors to reuse them later
+    v0_copy = np.copy(v0)
+    v1_copy = np.copy(v1)
+    # Normalize the vectors to get the directions and angles
+    v0 = v0 / np.linalg.norm(v0)
+    v1 = v1 / np.linalg.norm(v1)
+    # Dot product with the normalized vectors (can't use np.dot in W)
+    dot = np.sum(v0 * v1)
+    # If absolute value of dot product is almost 1, vectors are ~colineal, so use lerp
+    if np.abs(dot) > DOT_THRESHOLD:
+        return lerp(t, v0_copy, v1_copy)
+    # Calculate initial angle between v0 and v1
+    theta_0 = np.arccos(dot)
+    sin_theta_0 = np.sin(theta_0)
+    # Angle at timestep t
+    theta_t = theta_0 * t
+    sin_theta_t = np.sin(theta_t)
+    # Finish the slerp algorithm
+    s0 = np.sin(theta_0 - theta_t) / sin_theta_0
+    s1 = sin_theta_t / sin_theta_0
+    v2 = s0 * v0_copy + s1 * v1_copy
+    return torch.from_numpy(v2).to("cuda")
 
 def slerp_interpolate(zs, steps):
     out = []
@@ -250,6 +290,9 @@ def zs_to_ws(G,device,label,truncation_psi,zs):
 
 @click.command()
 @click.pass_context
+@click.option('--network', 'network_pkl', help='Network pickle filename', required=True)
+@click.option('--seeds', type=num_range, help='List of random seeds')
+@click.option('--trunc', 'truncation_psi', type=float, help='Truncation psi', default=1, show_default=True)
 @click.option('--class', 'class_idx', type=int, help='Class label (unconditional if not specified)')
 @click.option('--diameter', type=float, help='diameter of loops', default=100.0, show_default=True)
 @click.option('--frames', type=int, help='how many frames to produce (with seeds this is frames between each step, with loops this is total length)', default=240, show_default=True)
@@ -257,14 +300,18 @@ def zs_to_ws(G,device,label,truncation_psi,zs):
 @click.option('--increment', type=float, help='truncation increment value', default=0.01, show_default=True)
 @click.option('--interpolation', type=click.Choice(['linear', 'slerp', 'noiseloop', 'circularloop']), default='linear', help='interpolation type', required=True)
 @click.option('--easing',
-              type=click.Choice(['linear', 'easeInOutQuad', 'bounceEaseOut']),
+              type=click.Choice(['linear', 'easeInOutQuad', 'bounceEaseOut','circularEaseOut','circularEaseOut2']),
               default='linear', help='easing method', required=True)
 @click.option('--network', 'network_pkl', help='Network pickle filename', required=True)
 @click.option('--noise-mode', help='Noise mode', type=click.Choice(['const', 'random', 'none']), default='const', show_default=True)
 @click.option('--outdir', help='Where to save the output images', type=str, required=True, metavar='DIR')
-@click.option('--process', type=click.Choice(['image', 'interpolation','truncation']), default='image', help='generation method', required=True)
+@click.option('--process', type=click.Choice(['image', 'interpolation','truncation','interpolation-truncation']), default='image', help='generation method', required=True)
 @click.option('--projected-w', help='Projection result file', type=str, metavar='FILE')
 @click.option('--random_seed', type=int, help='random seed value (used in noise and circular loop)', default=0, show_default=True)
+@click.option('--scale-type',
+                type=click.Choice(['pad', 'padside', 'symm','symmside']),
+                default='pad', help='scaling method for --size', required=False)
+@click.option('--size', type=size_range, help='size of output (in format x-y)')
 @click.option('--seeds', type=num_range, help='List of random seeds')
 @click.option('--space', type=click.Choice(['z', 'w']), default='z', help='latent space', required=True)
 @click.option('--start', type=float, help='starting truncation value', default=0.0, show_default=True)
@@ -280,6 +327,8 @@ def generate_images(
     process: str,
     random_seed: Optional[int],
     diameter: Optional[float],
+    scale_type: Optional[str],
+    size: Optional[List[int]],
     seeds: Optional[List[int]],
     space: str,
     fps: Optional[int],
@@ -316,11 +365,47 @@ def generate_images(
     python generate.py --outdir=out --projected_w=projected_w.npz \\
         --network=https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/metfaces.pkl
     """
+    
+    # custom size code from https://github.com/eps696/stylegan2ada/blob/master/src/_genSGAN2.py
+    if(size): 
+        print('render custom size: ',size)
+        print('padding method:', scale_type )
+        custom = True
+    else:
+        custom = False
+
+    G_kwargs = dnnlib.EasyDict()
+    G_kwargs.size = size 
+    G_kwargs.scale_type = scale_type
+
+    # mask/blend latents with external latmask or by splitting the frame
+    latmask = False #temp
+    if latmask is None:
+        nHW = [int(s) for s in a.nXY.split('-')][::-1]
+        assert len(nHW)==2, ' Wrong count nXY: %d (must be 2)' % len(nHW)
+        n_mult = nHW[0] * nHW[1]
+        # if a.verbose is True and n_mult > 1: print(' Latent blending w/split frame %d x %d' % (nHW[1], nHW[0]))
+        lmask = np.tile(np.asarray([[[[1]]]]), (1,n_mult,1,1))
+        Gs_kwargs.countHW = nHW
+        Gs_kwargs.splitfine = a.splitfine
+        lmask = torch.from_numpy(lmask).to(device)
+    # else:
+        # if a.verbose is True: print(' Latent blending with mask', a.latmask)
+        # n_mult = 2
+        # if os.path.isfile(a.latmask): # single file
+        #     lmask = np.asarray([[img_read(a.latmask)[:,:,0] / 255.]]) # [h,w]
+        # elif os.path.isdir(a.latmask): # directory with frame sequence
+        #     lmask = np.asarray([[img_read(f)[:,:,0] / 255. for f in img_list(a.latmask)]]) # [h,w]
+        # else:
+        #     print(' !! Blending mask not found:', a.latmask); exit(1)
+        # lmask = np.concatenate((lmask, 1 - lmask), 1) # [frm,2,h,w]
+    # lmask = torch.from_numpy(lmask).to(device)
 
     print('Loading networks from "%s"...' % network_pkl)
     device = torch.device('cuda')
     with dnnlib.util.open_url(network_pkl) as f:
-        G = legacy.load_network_pkl(f)['G_ema'].to(device) # type: ignore
+        # G = legacy.load_network_pkl(f)['G_ema'].to(device) # type: ignore
+        G = legacy.load_network_pkl(f, custom=custom, **G_kwargs)['G_ema'].to(device) # type: ignore
 
     os.makedirs(outdir, exist_ok=True)
 
@@ -361,7 +446,7 @@ def generate_images(
             img = (img.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
             PIL.Image.fromarray(img[0].cpu().numpy(), 'RGB').save(f'{outdir}/seed{seed:04d}.png')
 
-    elif(process=='interpolation'):
+    elif(process=='interpolation' or process=='interpolation-truncation'):
         # create path for frames
         dirpath = os.path.join(outdir,'frames')
         os.makedirs(dirpath, exist_ok=True)
@@ -373,8 +458,10 @@ def generate_images(
         elif(interpolation=='noiseloop' or 'circularloop'):
             vidname = f'{process}-{interpolation}-{diameter}dia-seed_{random_seed}-{fps}fps'
 
-
-        interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,label,frames,noise_mode,dirpath,interpolation,easing,diameter)
+        if process=='interpolation-truncation':
+            interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,label,frames,noise_mode,dirpath,interpolation,easing,diameter,start,stop)
+        else:
+            interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,label,frames,noise_mode,dirpath,interpolation,easing,diameter)
 
         # convert to video
         cmd=f'ffmpeg -y -r {fps} -i {dirpath}/frame%04d.png -vcodec libx264 -pix_fmt yuv420p {outdir}/{vidname}.mp4'

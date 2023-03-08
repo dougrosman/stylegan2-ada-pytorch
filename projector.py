@@ -138,6 +138,7 @@ def project(
 @click.option('--num-steps',              help='Number of optimization steps', type=int, default=1000, show_default=True)
 @click.option('--seed',                   help='Random seed', type=int, default=303, show_default=True)
 @click.option('--save-video',             help='Save an mp4 video of optimization progress', type=bool, default=True, show_default=True)
+@click.option('--video-target-concat',    help='Save the output video as a side-by-side with the target image and video', type=bool, default=False, show_default=True)
 @click.option('--outdir',                 help='Where to save the output images', required=True, metavar='DIR')
 def run_projection(
     network_pkl: str,
@@ -145,7 +146,8 @@ def run_projection(
     outdir: str,
     save_video: bool,
     seed: int,
-    num_steps: int
+    num_steps: int,
+    video_target_concat: bool
 ):
     """Project given image to the latent space of pretrained network pickle.
 
@@ -197,13 +199,18 @@ def run_projection(
 
     #moved the video to the end so we can look at images while these videos take time to compile
     if save_video:
-        video = imageio.get_writer(f'{outdir}/proj.mp4', mode='I', fps=10, codec='libx264', bitrate='16M')
+        
+        video = imageio.get_writer(f'{outdir}/proj.mp4', mode='I', fps=30, codec='libx264', bitrate='16M')
         print (f'Saving optimization progress video "{outdir}/proj.mp4"')
         for projected_w in projected_w_steps:
             synth_image = G.synthesis(projected_w.unsqueeze(0), noise_mode='const')
-            synth_image = (synth_image + 1) * (255/2)
+            synth_image = (synth_image + 1) * (255/2) 
             synth_image = synth_image.permute(0, 2, 3, 1).clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
-            video.append_data(np.concatenate([target_uint8, synth_image], axis=1))
+
+            if video_target_concat:
+                video.append_data(np.concatenate([target_uint8, synth_image], axis=1))
+            else:
+                video.append_data(synth_image)
         video.close()
 
 #----------------------------------------------------------------------------

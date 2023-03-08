@@ -34,13 +34,15 @@ if __name__ == "__main__":
     for img_name in [x for x in os.listdir(RAW_IMAGES_DIR) if x[0] not in '._']:
         raw_img_path = os.path.join(RAW_IMAGES_DIR, img_name)
         for i, face_landmarks in enumerate(landmarks_detector.get_landmarks(raw_img_path), start=1):
-            face_img_name = '%s_%02d.png' % (os.path.splitext(img_name)[0], i)
+            face_img_name = '%s%05d.jpg' % ("", i)
             aligned_face_path = os.path.join(ALIGNED_IMAGES_DIR, face_img_name)
             os.makedirs(ALIGNED_IMAGES_DIR, exist_ok=True)
             image_align(raw_img_path, aligned_face_path, face_landmarks)
 
 
-## ADDED BY DOUG
+
+## Some notes...
+# https://stackoverflow.com/questions/41912372/dlib-installation-on-windows-10
 
 
 # As you can see many answers above, But i would like to post a quick solution which works for sure in Anaconda3. I haven't chosen Visual Studio as it consumes lot of memory.
@@ -60,6 +62,3 @@ if __name__ == "__main__":
 # Note you can find few other dlib packages, but the above one will works perfectly with this procedure.
 
 # dlib will be successfully installed.
-
-
-# https://stackoverflow.com/questions/41912372/dlib-installation-on-windows-10

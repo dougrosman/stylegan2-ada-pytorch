@@ -116,7 +116,7 @@ def open_image_zip(source, *, max_images: Optional[int]):
     def iterate_images():
         with zipfile.ZipFile(source, mode='r') as z:
             for idx, fname in enumerate(input_images):
-                printf(fname)
+                print(fname)
                 with z.open(fname, 'r') as file:
                     # converts to correct image mode before processing
                     img = robust_image_convert(PIL.Image.open(file))

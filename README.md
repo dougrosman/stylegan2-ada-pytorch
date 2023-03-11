@@ -1,4 +1,4 @@
-## Add to Colab
+****## Add to Colab
 
 ### StyleGAN2-ADA PyTorch (Start Here)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dvschultz/stylegan2-ada-pytorch/blob/main/SG2_ADA_PyTorch.ipynb)
@@ -96,6 +96,14 @@ This repository is a faithful reimplementation of [StyleGAN2-ADA](https://github
 | &ensp;&ensp;&ensp;&ensp;&boxur;&nbsp; [metrics](https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/metrics/) | Feature detectors used by the quality metrics
 
 ## Requirements
+
+**Note**
+Google Colab (as of March 11, 2023) has the following versions:
+* Cuda: 11.8
+* Pytorch: 1.13.1+cu116
+* Python: 3.9.16
+
+---
 
 * Linux and Windows are supported, but we recommend Linux for performance and compatibility reasons.
 * 1&ndash;8 high-end NVIDIA GPUs with at least 12 GB of memory. We have done all testing and development using NVIDIA DGX-1 with 8 Tesla V100 GPUs.

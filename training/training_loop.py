@@ -239,11 +239,11 @@ def training_loop(
     stats_tfevents = None
     if rank == 0:
         stats_jsonl = open(os.path.join(run_dir, 'stats.jsonl'), 'wt')
-        try:
-            import torch.utils.tensorboard as tensorboard
-            stats_tfevents = tensorboard.SummaryWriter(run_dir)
-        except ImportError as err:
-            print('Skipping tfevents export:', err)
+        # try:
+        #     import torch.utils.tensorboard as tensorboard
+        #     stats_tfevents = tensorboard.SummaryWriter(run_dir)
+        # except ImportError as err:
+        #     print('Skipping tfevents export:', err)
 
     # Train.
     if rank == 0:

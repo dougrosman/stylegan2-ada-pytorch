@@ -464,7 +464,7 @@ def generate_images(
             interpolate(G,device,projected_w,seeds,random_seed,space,truncation_psi,label,frames,noise_mode,dirpath,interpolation,easing,diameter)
 
         # convert to video
-        cmd=f'ffmpeg -y -r {fps} -i {dirpath}/frame%06d.png -vcodec libx264 -crf 22 -preset faster -pix_fmt yuv420p {outdir}/{vidname}.mp4'
+        cmd=f'ffmpeg -y -r {fps} -i {dirpath}/frame%06d.png -vcodec libx264 -crf 20 -preset slow -pix_fmt yuv420p {outdir}/{vidname}.mp4'
         subprocess.call(cmd, shell=True)
 
     elif(process=='truncation'):
@@ -483,7 +483,7 @@ def generate_images(
         truncation_traversal(G,device,seeds,label,start,stop,increment,noise_mode,dirpath)
 
         # convert to video
-        cmd=f'ffmpeg -y -r {fps} -i {dirpath}/frame%06d.png -vcodec libx264 -crf 22 -preset faster -pix_fmt yuv420p {outdir}/{vidname}.mp4'
+        cmd=f'ffmpeg -y -r {fps} -i {dirpath}/frame%06d.png -vcodec libx264 -crf 20 -preset slow -pix_fmt yuv420p {outdir}/{vidname}.mp4'
         subprocess.call(cmd, shell=True)
 
 #----------------------------------------------------------------------------
